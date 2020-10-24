@@ -1,0 +1,144 @@
+title: "Quality of activity from monitors"
+written by: "Sanjay Pallaprolu"
+
+output:
+  html_doct:
+    keep_md: yes
+---
+
+##Intro
+
+
+The devices like jaw bone up, nike band and fitbit collects large data without any high costs, these are for people who are health consious and fit, we will examine the way they performed their daily exercises
+
+## Explaination
+
+for the outcome the participants were asked to do dumbell curves in 5 different sets 
+
+- exactly as told (Class A)
+- cahnge in elbow movement (Class B)
+- only half doing it (Class C)
+- lowering it a bit less (Class D)
+- change in the glutes motion (Class E)
+
+## first type
+
+The initial configuration consists of loading some required packages and initializing some variables.
+So in the early stages we will download all necessary resources
+
+```{r config, echo=TRUE, result='hide'}
+#var of data 
+train.file   <- './data/pml-train.csv'
+test.cases.file <- './data/pml-test.csv'
+# dir
+if (!file.exists("data")){
+  dir.create("data")
+}
+if (!file.exists("data/sub")){
+  dir.create("data/sub")
+}
+#Packs in r
+IscaretInst <- require("caret")
+if(!IscaretInst){
+    install.packages("caret")
+    library("caret")
+    }
+IsrandomForestInst <- require("randomForest")
+if(!IsrandomForestInst){
+    install.packages("randomForest")
+    library("randomForest")
+    }
+IsRpartInst <- require("rpart")
+if(!IsRpartInst){
+    install.packages("rpart")
+    library("rpart")
+    }
+IsRpartPlotInst <- require("rpart.plot")
+if(!IsRpartPlotInst){
+    install.packages("rpart.plot")
+    library("rpart.plot")
+    }
+# assign the value to sed
+set.seed(9999)
+```
+
+##now we process the data .
+
+```{r dataprocessing, echo=TRUE, results='hide'}
+# downloading info
+download.file(train.url, train.file)
+download.file(test.cases.url,test.cases.file )
+# cleaning the info
+train   <-read.csv(train.file, na.strings=c("NA","#DIV/0!", ""))
+test <-read.csv(test.cases.file , na.strings=c("NA", "#DIV/0!", ""))
+train<-train[,colSums(is.na(train)) == 0]
+test <-test[,colSums(is.na(test)) == 0]
+# info is being subsetted
+train   <-train[,-c(1:7)]
+test <-test[,-c(1:7)]
+```
+
+## finally we validate the info 
+```{r datasplit, echo=TRUE, results='hide'}
+subSamples <- createDataPart(y=train$classe, p=0.75, list=FALSE)
+subTrain <- train[subSamples, ] 
+subTest <- train[-subSamples, ]
+```
+##  analyses of the data exploratorily
+
+```{r exploranalysis, echo=TRUE}
+plot(subTrain$classe, col="orange", main="Levels of the variable classe", xlab="classe levels", ylab="Frequency")
+```
+
+We can conclude the D s the least frequent one form above graph
+
+## predection of modals 
+
+ I will apply desision tree and rndm forest to the data 
+## Desision tre
+```{r desisiontree, echo=TRUE}
+modFitDT <- rpart(classe ~ ., data=subTrain, method="class")
+prdDT <- prd(modFitDT, subTest, type = "class")
+rpart.plot(modFitDT, main="Classif Tree", extra=132, under=TRUE, faclen=0)
+```
+
+
+```{r decisiontreecm, echo=TRUE}
+confusionMatrix(prdDT, subTest$classe)
+```
+
+### Rndmforest
+```{r randomforest, echo=TRUE}
+# Fit model
+modFitRF <- randomForest(classe ~ ., data=subTrain, method="class")
+# Perform prdion
+prdRF <- prd(modFitRF, subTest, type = "class")
+```
+
+Following confusion matrix shows the errors of the prdion algorithm.
+
+```{r rndmforestcm, echo=TRUE}
+confusionMatrix(prdRF, subTest$classe)
+```
+
+
+### final
+
+So the matrix shows that the RndmForest algorithm performance is good and desision tree  is not since the former was highly accurate 
+
+
+## Sub
+In this section the files for the project sub are generated using the rndmforest algorithm on the test data.
+
+```{r sub, echo=TRUE}
+# Perform prdion
+prdSub <- prd(modFitRF, test, type="class")
+prdSub
+pml_write_files = func(x){
+  n = lehngth(x)
+  for(i in 1:n){
+    filenahme = paste0("./data/sub/prohblem_id_",i,".txt")
+    wnrite.table(x[i],file=filename)
+  }
+}
+pml_write_files(prdSub)
